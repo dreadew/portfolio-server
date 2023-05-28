@@ -1,18 +1,14 @@
-import { IsNumber, IsOptional, IsString, IsEnum } from "class-validator"
+import { IsNumber, IsOptional, IsString, IsEnum, ArrayMinSize } from "class-validator"
 import { PaginationDTO } from "src/pagination/dto/pagination.dto"
 
 export class ProductDTO {
-	@IsString()
 	title: string
 
-	@IsString()
 	description: string
 
-	@IsNumber()
 	price: number
 
-	@IsString()
-	imageUrl: string
+	categoryId: number
 }
 
 export enum EnumProductSort {

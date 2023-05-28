@@ -29,13 +29,14 @@ export class UsersService {
     })
 
     if (uniqueUser)
-      throw new BadRequestException('E-mail already exists');
+      throw new BadRequestException('Пользователь с таким адресом эл. почты уже зарегистрирован');
 
     const user = await this.prisma.user.create({
       data: {
         email: createUserDto.email,
         name: createUserDto.name,
-        password: await hash(createUserDto.password)
+        password: await hash(createUserDto.password),
+        code: Math.floor(1000 + Math.random() * 9000).toString()
       }
     });
 
@@ -58,7 +59,7 @@ export class UsersService {
       }
     });
 
-    const tokens = await this.generateTokens(user.id);
+    const tokens = this.generateTokens(user.id);
 
     return {
       user: this.returnUserFields,
@@ -124,11 +125,11 @@ export class UsersService {
       }
     });
 
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('Пользователь не найден');
 
     const isValid = await verify(user.password, dto.password);
 
-    if (!isValid) throw new UnauthorizedException('Invalid credentials');
+    if (!isValid) throw new UnauthorizedException('Неверный логин или пароль');
 
     return user;
   }

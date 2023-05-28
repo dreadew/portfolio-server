@@ -4,20 +4,28 @@ import { returnProductObject } from './return-product.object';
 import { EnumProductSort, GetAllProductsDto, ProductDTO } from './dto/product.dto';
 import { Prisma } from '@prisma/client';
 import { PaginationService } from 'src/pagination/pagination.service';
+import { convertToSlug } from 'utils/generateSlug';
+import { FilesService } from 'src/files/files.service';
+import { join } from 'path';
 
 @Injectable()
 export class ProductService {
-  constructor(private readonly prisma: PrismaService, private readonly paginationService: PaginationService) {
+  constructor(private readonly prisma: PrismaService, private readonly paginationService: PaginationService, private readonly fileService: FilesService) {
     
   }
 
-  async create(createProductDto: ProductDTO) {
+  async create(createProductDto: ProductDTO, file: Express.Multer.File) {
+    const uploaded_file: string[] = [];
+    uploaded_file.push((await this.fileService.create(file)).filename);
+
     const product = await this.prisma.product.create({
       data: {
         title: createProductDto.title,
         description: createProductDto.description,
-        price: createProductDto.price,
-        imageUrl: createProductDto.imageUrl
+        price: +createProductDto.price,
+        images: uploaded_file,
+        slug: convertToSlug(createProductDto.title),
+        categoryId: +createProductDto.categoryId
       }
     });
 
@@ -32,7 +40,7 @@ export class ProductService {
       select: returnProductObject
     });
 
-    if (!product) throw new NotFoundException('Product not found');
+    if (!product) throw new NotFoundException('Товар не найден');
 
     return product;
   }
@@ -70,6 +78,7 @@ export class ProductService {
 
     const products = await this.prisma.product.findMany({
       where: prismaSearchTermFilter,
+      select: returnProductObject,
       orderBy: prismaSort,
       skip,
       take: perPage,
@@ -83,13 +92,45 @@ export class ProductService {
     };*/
   }
 
-  async update(id: number, updateProductDto: ProductDTO) {
+  async update(id: number, updateProductDto: ProductDTO, file?: Express.Multer.File) {
+    const { description, price, title } = updateProductDto
+    
+    if (file) {
+      const uploaded_file: string[] = [];
+      uploaded_file.push((await this.fileService.create(file)).filename);
+      return await this.prisma.product.update({
+        where: {
+          id
+        },
+        data: {
+          description,
+          price: +price,
+          title,
+          slug: convertToSlug(title),
+          images: uploaded_file,
+          Category: {
+            connect: {
+              id: +updateProductDto.categoryId
+            }
+          }
+        }
+      });
+    }
+
     return await this.prisma.product.update({
       where: {
         id
       },
       data: {
-        ...updateProductDto
+        description,
+        price: +price,
+        title,
+        slug: convertToSlug(title),
+        Category: {
+          connect: {
+            id: +updateProductDto.categoryId
+          }
+        }
       }
     });
   }
